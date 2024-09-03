@@ -21,8 +21,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        # Ви можете додати інші залежності, якщо потрібно, але не smtplib
+        # Додайте інші залежності, якщо вони потрібні
 
     - name: Run the script
       run: |
-        python D:/USER/files/scripts/warning_mailing_script.py
+        python warning_mailing_script.py  # Використовуйте відносний шлях до скрипта в кореневій директорії
