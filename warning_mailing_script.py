@@ -91,6 +91,18 @@ def log_client(email):
     except Exception as e:
         print(f"Помилка при логуванні клієнта: {e}")
 
+def test_imap_connection():
+    try:
+        print("Перевірка підключення до IMAP сервера...")
+        with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as mail:
+            mail.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            print("Підключення успішне!")
+    except imaplib.IMAP4.error as e:
+        print(f"Помилка підключення: {e}")
+
+# Виклик функції для тестування
+test_imap_connection()
+
 # Функція для перевірки нових листів і відправки повідомлення
 def check_and_reply():
     print("Перевірка нових листів...")
