@@ -42,9 +42,30 @@ def is_power_on():
         return False
 
 # Функція для надсилання повідомлення
-def send_email(recipient_email, subject, body):
+def send_email(recipient_email, subject):
     print(f"Підготовка до відправки листа на {recipient_email} з темою '{subject}'...")
-    msg = MIMEText(body)
+
+    # HTML повідомлення зі стилізацією
+    html_body = """
+    <html>
+        <body style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
+            <p>В даний момент електроживлення відсутнє.</p>
+            <p>Ми обробимо ваше замовлення, як тільки це стане можливим.</p>
+            <p>Орієнтовні години роботи відповідно до графіка відключень:</p>
+            <pre>
+                пн        10:00 11:00 12:00 13:00 14:00 15:00 16:00
+                вт                          13:00 14:00 15:00 16:00 17:00 18:00
+                ср   9:00 10:00 11:00 12:00 13:00                   16:00 17:00 18:00
+                чт        10:00 11:00 12:00 13:00 14:00 15:00 16:00
+                пт                          13:00 14:00 15:00 16:00 17:00 18:00       
+            </pre>
+            <p>Дякуємо за розуміння, з повагою, <strong>репро24</strong></p>
+        </body>
+    </html>
+    """
+
+    # Створюємо MIME-повідомлення з типом text/html
+    msg = MIMEText(html_body, 'html')
     msg['From'] = EMAIL_ADDRESS
     msg['To'] = recipient_email
     msg['Subject'] = subject
@@ -112,8 +133,7 @@ def check_and_reply():
                         
                         if not power_status:
                             subject_reply = "Попередження: відсутність електроживлення"
-                            body = "Ми зможемо обробити ваше замовлення, як тільки це стане можливим."
-                            send_email(from_email, subject_reply, body)
+                            send_email(from_email, subject_reply)
                             log_client(from_email)
 
                         mail.store(e_id, '+FLAGS', '\\Seen')
