@@ -5,6 +5,7 @@ import imaplib
 import email
 from email.utils import parsedate_to_datetime
 from email.mime.text import MIMEText
+from datetime import datetime, timezone
 
 # Налаштування для ukr.net
 SMTP_SERVER = 'smtp.ukr.net'
@@ -12,7 +13,7 @@ SMTP_PORT = 465
 IMAP_SERVER = 'imap.ukr.net'
 IMAP_PORT = 993
 EMAIL_ADDRESS = 'evgenia_print24@ukr.net'
-EMAIL_PASSWORD = 'yJRLZt0zjFYAz7jJ'  # пароль для ІМАР доступу
+EMAIL_PASSWORD = 'yJRLZt0zjJ'  # пароль для ІМАР доступу
 
 # Файли для збереження стану та логування
 STATE_FILE = 'power_status.txt'
@@ -27,8 +28,9 @@ if not os.path.exists(LOG_FILE):
     open(LOG_FILE, 'w').close()  # Створити порожній файл
 
 if not os.path.exists(LAST_CHECK_FILE):
+    # Встановлюємо час останньої перевірки на поточний час в UTC
     with open(LAST_CHECK_FILE, 'w') as f:
-        f.write("1970-01-01 00:00:00")  # Встановлюємо час останньої перевірки на дату Unix Epoch
+        f.write(datetime(1970, 1, 1, tzinfo=timezone.utc).strftime('%a, %d %b %Y %H:%M:%S +0000'))
 
 # Функція для перевірки наявності електроживлення
 def is_power_on():
@@ -140,7 +142,7 @@ def check_and_reply():
 
     # Оновлення часу останньої перевірки
     with open(LAST_CHECK_FILE, 'w') as f:
-        f.write(latest_msg_date.strftime('%Y-%m-%d %H:%M:%S'))
+        f.write(latest_msg_date.strftime('%a, %d %b %Y %H:%M:%S +0000'))
 
     print("Перевірка завершена.")
 
