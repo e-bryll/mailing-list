@@ -1,32 +1,39 @@
 import smtplib
 import socket
 import os
+import imaplib
+import email
+from email.utils import parsedate_to_datetime
 from email.mime.text import MIMEText
 
 # Налаштування для ukr.net
 SMTP_SERVER = 'smtp.ukr.net'
 SMTP_PORT = 465
+IMAP_SERVER = 'imap.ukr.net'
+IMAP_PORT = 993
 EMAIL_ADDRESS = 'evgenia_print24@ukr.net'
 EMAIL_PASSWORD = 'yJRLZt0zjFYAz7jJ'  # пароль для ІМАР доступу
 
-# Файл для збереження стану та логування
+# Файли для збереження стану та логування
 STATE_FILE = 'power_status.txt'
 LOG_FILE = 'client_log.txt'
+LAST_CHECK_FILE = 'last_check.txt'
 
 # Перевірка і створення файлів, якщо вони відсутні
 if not os.path.exists(STATE_FILE):
-    with open(STATE_FILE, 'w') as f:
-        f.write('on')  # Ініціалізація початкового стану як 'on'
+    open(STATE_FILE, 'w').close()  # Створити порожній файл
 
 if not os.path.exists(LOG_FILE):
     open(LOG_FILE, 'w').close()  # Створити порожній файл
 
+if not os.path.exists(LAST_CHECK_FILE):
+    with open(LAST_CHECK_FILE, 'w') as f:
+        f.write("1970-01-01 00:00:00")  # Встановлюємо час останньої перевірки на дату Unix Epoch
 
 # Функція для перевірки наявності електроживлення
 def is_power_on():
     try:
         print("Перевірка електроживлення...")
-        # Спроба підключитися до вашого комп'ютера через публічну IP-адресу
         socket.create_connection(("217.76.200.142", 53), timeout=10)
         print("Електроживлення в наявності.")
         return True
@@ -61,35 +68,61 @@ def log_client(email):
     except Exception as e:
         print(f"Помилка при логуванні клієнта: {e}")
 
-# Функція для перевірки і відправки повідомлення
-def auto_reply(client_email):
-    print("Розпочато роботу автовідповідача...")
+# Функція для перевірки нових листів і відправки повідомлення
+def check_and_reply():
+    print("Перевірка нових листів...")
+    
     power_status = is_power_on()
-    
-    # Збереження стану електроживлення
-    if os.path.exists(STATE_FILE):
-        with open(STATE_FILE, 'r') as f:
-            last_status = f.read().strip()
-            print(f"Попередній стан електроживлення: {last_status}")
-    else:
-        last_status = None
-        print("Файл стану не знайдено, вважається, що попереднього стану немає.")
-    
-    if not power_status and last_status != 'off':
-        print("Відправлення попередження про відсутність електроживлення...")
-        subject = "Попередження: відсутність електроживлення"
-        body = "В даний момент ми не можемо відповісти на ваш лист через відсутність електроживлення. Ми зв'яжемося з вами, як тільки це стане можливим."
-        send_email(client_email, subject, body)
-        log_client(client_email)
-        
-    # Оновлення стану електроживлення
-    try:
-        with open(STATE_FILE, 'w') as f:
-            f.write('off' if not power_status else 'on')
-        print(f"Стан електроживлення оновлено: {'off' if not power_status else 'on'}")
-    except Exception as e:
-        print(f"Помилка при оновленні стану електроживлення: {e}")
+
+    # Зчитування часу останньої перевірки
+    with open(LAST_CHECK_FILE, 'r') as f:
+        last_check_time = parsedate_to_datetime(f.read().strip())
+
+    with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as mail:
+        mail.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        mail.select('inbox')
+
+        # Шукаємо всі непрочитані листи
+        status, response = mail.search(None, '(UNSEEN)')
+        email_ids = response[0].split()
+
+        latest_msg_date = last_check_time  # Ініціалізуємо останній час перевірки
+
+        for e_id in email_ids:
+            status, msg_data = mail.fetch(e_id, '(RFC822)')
+            for response_part in msg_data:
+                if isinstance(response_part, tuple):
+                    msg = email.message_from_bytes(response_part[1])
+                    from_email = msg['from']
+                    to_email = msg['to']
+                    cc_email = msg.get('cc', '')  # Може бути None, тому за замовчуванням порожній рядок
+
+                    # Перевірка дати листа
+                    msg_date = parsedate_to_datetime(msg['Date'])
+                    if msg_date <= last_check_time:
+                        continue  # Пропускаємо старі листи
+
+                    # Оновлюємо latest_msg_date, якщо поточний лист новіший
+                    if msg_date > latest_msg_date:
+                        latest_msg_date = msg_date
+
+                    # Перевірка, чи лист був переадресований
+                    if to_email != EMAIL_ADDRESS and (EMAIL_ADDRESS in to_email or EMAIL_ADDRESS in cc_email):
+                        print(f"Лист від {from_email} переадресовано вам. Підготовка автовідповіді...")
+                        
+                        if not power_status:
+                            subject_reply = "Попередження: відсутність електроживлення"
+                            body = "Ми зможемо обробити ваше замовлення, як тільки це стане можливим."
+                            send_email(from_email, subject_reply, body)
+                            log_client(from_email)
+
+                        mail.store(e_id, '+FLAGS', '\\Seen')
+
+    # Оновлення часу останньої перевірки
+    with open(LAST_CHECK_FILE, 'w') as f:
+        f.write(latest_msg_date.strftime('%Y-%m-%d %H:%M:%S'))
+
+    print("Перевірка завершена.")
 
 # Виклик функції
-client_email = 'evgenia_print24@ukr.net'  # Замість цього використовуйте реальну адресу клієнта
-auto_reply(client_email)
+check_and_reply()
