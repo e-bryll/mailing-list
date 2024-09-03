@@ -25,4 +25,4 @@ jobs:
 
     - name: Run the script
       run: |
-        python D:/USER/files/scripts/warning_mailing_script.py
+        python scripts/warning_mailing_script.py
