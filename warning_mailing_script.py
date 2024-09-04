@@ -110,16 +110,29 @@ def check_and_reply():
     power_status = is_power_on()
 
     # Зчитування часу останньої перевірки
-    with open(LAST_CHECK_FILE, 'r') as f:
-        last_check_time = parsedate_to_datetime(f.read().strip())
+    try:
+        with open(LAST_CHECK_FILE, 'r') as f:
+            last_check_time = parsedate_to_datetime(f.read().strip())
+        print(f"Час останньої перевірки: {last_check_time}")
+    except Exception as e:
+        print(f"Помилка при зчитуванні часу останньої перевірки: {e}")
+        last_check_time = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
     with imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT) as mail:
-        mail.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        try:
+            mail.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            print("Логін успішний.")
+        except imaplib.IMAP4.error as e:
+            print(f"Помилка логіну: {e}")
+            return
+
         mail.select('inbox')
+        print("Скринька 'inbox' обрана.")
 
         # Шукаємо всі непрочитані листи
         status, response = mail.search(None, '(UNSEEN)')
         email_ids = response[0].split()
+        print(f"Знайдено {len(email_ids)} непрочитаних листів.")
 
         latest_msg_date = last_check_time  # Ініціалізуємо останній час перевірки
 
@@ -134,7 +147,10 @@ def check_and_reply():
 
                     # Перевірка дати листа
                     msg_date = parsedate_to_datetime(msg['Date'])
+                    print(f"Дата листа: {msg_date}, Відправник: {from_email}")
+
                     if msg_date <= last_check_time:
+                        print("Лист старіший за час останньої перевірки. Пропускаємо.")
                         continue  # Пропускаємо старі листи
 
                     # Оновлюємо latest_msg_date, якщо поточний лист новіший
@@ -151,10 +167,15 @@ def check_and_reply():
                             log_client(from_email)
 
                         mail.store(e_id, '+FLAGS', '\\Seen')
+                        print("Лист відмічено як прочитаний.")
 
     # Оновлення часу останньої перевірки
-    with open(LAST_CHECK_FILE, 'w') as f:
-        f.write(latest_msg_date.strftime('%a, %d %b %Y %H:%M:%S +0000'))
+    try:
+        with open(LAST_CHECK_FILE, 'w') as f:
+            f.write(latest_msg_date.strftime('%a, %d %b %Y %H:%M:%S +0000'))
+        print(f"Час останньої перевірки оновлено до: {latest_msg_date}")
+    except Exception as e:
+        print(f"Помилка при оновленні часу останньої перевірки: {e}")
 
     print("Перевірка завершена.")
 
