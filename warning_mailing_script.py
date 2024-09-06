@@ -129,10 +129,10 @@ def check_and_reply():
         mail.select('inbox')
         print("Скринька 'inbox' обрана.")
 
-        # Шукаємо всі непрочитані листи
-        status, response = mail.search(None, '(UNSEEN)')
+        # Шукаємо всі листи
+        status, response = mail.search(None, 'ALL')
         email_ids = response[0].split()
-        print(f"Знайдено {len(email_ids)} непрочитаних листів.")
+        print(f"Знайдено {len(email_ids)} листів.")
 
         latest_msg_date = last_check_time  # Ініціалізуємо останній час перевірки
 
@@ -165,9 +165,6 @@ def check_and_reply():
                             subject_reply = "Попередження: відсутність електроживлення"
                             send_email(from_email, subject_reply)
                             log_client(from_email)
-
-                        mail.store(e_id, '+FLAGS', '\\Seen')
-                        print("Лист відмічено як прочитаний.")
 
     # Оновлення часу останньої перевірки
     try:
