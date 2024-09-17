@@ -13,7 +13,7 @@ SMTP_PORT = 465
 IMAP_SERVER = 'imap.ukr.net'
 IMAP_PORT = 993
 EMAIL_ADDRESS = 'evgenia_print24@ukr.net'
-EMAIL_PASSWORD = '8goTEc4DeJunvNdK'  # пароль для ІМАР доступу
+EMAIL_PASSWORD = 'yCsu2r2QipK1gakR'  # пароль для ІМАР доступу
 
 # Файли для збереження стану та логування
 STATE_FILE = 'power_status.txt'
